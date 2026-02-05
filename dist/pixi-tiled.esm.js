@@ -2,7 +2,7 @@
  
 /*!
  * pixiv5-tiled - v2.0.0
- * Compiled Thu, 05 Feb 2026 14:33:47 UTC
+ * Compiled Thu, 05 Feb 2026 16:31:58 UTC
  *
  * pixiv5-tiled is licensed under the MIT License.
  * http://www.opensource.org/licenses/mit-license
@@ -338,7 +338,7 @@ function resolveTile(tilesets, gid) {
 	}
 	if (find === undefined)
 	{
-		find = {id: realGid} ; 
+		find = {id: realGid} ;
 	}
 
 	let img = Object.assign({}, find, { tilesetId });
@@ -958,7 +958,7 @@ const TiledMapAsset = {
 			type: ExtensionType.LoadParser,
 			priority: LoaderParserPriority.Low
 		},
-		testParse(asset, loadAsset, loader)
+		testParse(asset, loadAsset)
 		{
 			return new Promise((resolve, reject) => {
 				if (asset && asset.type == 'map')
@@ -971,9 +971,9 @@ const TiledMapAsset = {
 				}
 			});
 		},
-		parse(map, loadedAsset, loader)
+		parse(map, loadedAsset)
 		{
-			return new Promise((resolve, reject) => {	
+			return new Promise((resolve, reject) => {
 				let baseUrl = loadedAsset.src.replace((this ).baseUrl, '');
 				baseUrl = baseUrl.match(cropName)[0];
 				map.baseUrl = baseUrl;
@@ -989,13 +989,13 @@ const TiledMapAsset = {
 						{
 							map.tilesets[tilesetIndex] = cachedTileset;
 						}
-						else 
+						else
 						{
 							tilesetsToLoad.push(tileset);
 							TilesetCache[tileset.source] = tileset;
 						}
 					}
-				}			
+				}
 				if (tilesetsToLoad.length == 0)
 				{
 					resolve(map );
@@ -1024,7 +1024,7 @@ const TiledMapAsset = {
 								{
 									Object.assign(tileset, tilesetResource);
 								}
-							} 
+							}
 						});
 						resolve(map );
 					});

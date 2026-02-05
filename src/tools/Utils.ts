@@ -23,7 +23,7 @@ export function HexStringToHexInt(value: string | number): number {
 
 	try {
 		return parseInt(value, 16);
-	} catch (e) {
+	} catch (e: any) {
 		console.warn('Color parse error:', e.message);
 		return 0;
 	}
@@ -37,7 +37,7 @@ export function HexStringToAlpha(value: string | number): number {
 
 	try {
 		return parseInt(value.substr(1, 2), 16) / 255.0;
-	} catch (e) {
+	} catch (e: any) {
 		console.warn('Alpha parse error:', e.message);
 		return 1;
 	}
@@ -68,7 +68,7 @@ export function resolveTile(tilesets: ITiledTileset[], gid: number) {
 	}
 	if (find === undefined)
 	{
-		find = {id: realGid} as ITiledTile; 
+		find = {id: realGid} as ITiledTile;
 	}
 
 	let img = Object.assign({}, find, { tilesetId });

@@ -6,12 +6,12 @@
   "description": "pixi-tiled",
   "namespace": "PIXI.tiled",
   "main": "./dist/pixi-tiled.cjs.js",
-  "bundle": "../wtse-example/public/js/pixi-tiled.umd.js",
+  "bundle": "./dist/pixi-tiled.umd.js",
   "module": "./dist/pixi-tiled.esm.js",
-  "typings": "./index.d.ts",
+  "typings": "./dist/index.d.ts",
   "source": "./src/index.ts",
   "scripts": {
-    "build": "del-cli ./dist && rollup -c ",
+    "build": "del-cli ./dist && rollup -c && tsc",
     "prepublish": "npm run build",
     "watch": "rollup -cw"
   },

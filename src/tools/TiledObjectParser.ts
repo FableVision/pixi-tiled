@@ -1,5 +1,4 @@
 import { Spritesheet } from '@pixi/spritesheet';
-import { ILoaderResource, Loader } from '@pixi/loaders';
 import { TiledContainer } from '../objects/TiledContainer';
 import { Config, LayerBuildersMap } from '../Config';
 
@@ -88,7 +87,7 @@ const TiledMapAsset = {
 			type: ExtensionType.LoadParser,
 			priority: LoaderParserPriority.Low
 		},
-		testParse(asset: any, loadAsset?: LoadAsset, loader?: Loader): Promise<boolean>
+		testParse(asset: any, loadAsset?: LoadAsset): Promise<boolean>
 		{
 			return new Promise((resolve, reject) => {
 				if (asset && asset.type == 'map')
@@ -101,9 +100,9 @@ const TiledMapAsset = {
 				}
 			});
 		},
-		parse(map: ITiledMap, loadedAsset: any, loader?: Loader): Promise<ITiledMap>
+		parse(map: ITiledMap, loadedAsset: any): Promise<ITiledMap>
 		{
-			return new Promise((resolve, reject) => {	
+			return new Promise((resolve, reject) => {
 				let baseUrl = loadedAsset.src.replace((this as any).baseUrl, '');
 				baseUrl = baseUrl.match(cropName)![0];
 				map.baseUrl = baseUrl;
@@ -119,13 +118,13 @@ const TiledMapAsset = {
 						{
 							map.tilesets[tilesetIndex] = cachedTileset;
 						}
-						else 
+						else
 						{
 							tilesetsToLoad.push(tileset);
 							TilesetCache[tileset.source] = tileset;
 						}
 					}
-				}			
+				}
 				if (tilesetsToLoad.length == 0)
 				{
 					resolve(map as ITiledMap);
@@ -154,7 +153,7 @@ const TiledMapAsset = {
 								{
 									Object.assign(tileset, tilesetResource);
 								}
-							} 
+							}
 						});
 						resolve(map as ITiledMap);
 					});

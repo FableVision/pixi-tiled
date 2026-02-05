@@ -2,7 +2,7 @@
  
 /*!
  * pixiv5-tiled - v2.0.0
- * Compiled Fri, 16 Jul 2021 11:53:40 UTC
+ * Compiled Thu, 05 Feb 2026 14:33:47 UTC
  *
  * pixiv5-tiled is licensed under the MIT License.
  * http://www.opensource.org/licenses/mit-license
@@ -11,13 +11,13 @@
  */
 import { Container, DisplayObject } from '@pixi/display';
 import { Point, Rectangle, Polygon, Ellipse, Matrix } from '@pixi/math';
-import { Texture, ImageResource, BaseTexture } from '@pixi/core';
+import { Texture, ImageResource, BaseTexture, ExtensionType, utils, extensions } from '@pixi/core';
 import { Sprite } from '@pixi/sprite';
 import { AnimatedSprite } from '@pixi/sprite-animated';
 import { Graphics } from '@pixi/graphics';
 import { Text } from '@pixi/text';
-import { Loader } from '@pixi/loaders';
 import { EventEmitter } from '@pixi/utils';
+import { LoaderParserPriority, Assets } from '@pixi/assets';
 
 class TiledContainer extends Container {constructor(...args) { super(...args); TiledContainer.prototype.__init.call(this);TiledContainer.prototype.__init2.call(this); }
 	__init() {this.layerHeight = 0;}
@@ -269,7 +269,7 @@ function BuildPrimitive( meta ) {
 			break;
 		}
 		case TiledObjectType.POLYLINE: {
-			const points = meta.polygon;
+			const points = meta.polyline;
 			const poses = points.map(p => {
 				return new Point(p.x + meta.x, p.y + meta.y);
 			});
@@ -290,12 +290,12 @@ function BuildPrimitive( meta ) {
 
 var TiledPrimitives = /*#__PURE__*/Object.freeze({
 	__proto__: null,
-	TiledRect: TiledRect,
+	BuildPrimitive: BuildPrimitive,
+	TiledEllipse: TiledEllipse,
 	TiledPoint: TiledPoint,
 	TiledPolygon: TiledPolygon,
 	TiledPolypine: TiledPolypine,
-	TiledEllipse: TiledEllipse,
-	BuildPrimitive: BuildPrimitive
+	TiledRect: TiledRect
 });
 
 function HexStringToHexInt(value) {
@@ -400,8 +400,8 @@ function ApplyMeta(meta, target) {
 	target.height = meta.height || target.height;
 	target.rotation = (((meta ).rotation || 0) * Math.PI) / 180.0;
 
-	target.x = meta.x || 0;
-	target.y = meta.y || 0;
+	target.x = (meta.x || 0) + ((meta ).offsetx || 0);
+	target.y = (meta.y || 0) + ((meta ).offsety || 0);
 
 	target.visible = meta.visible == undefined ? true : meta.visible;
 	target.types = meta.type ? meta.type.split(":") : [];
@@ -772,10 +772,9 @@ class TilesetManager extends EventEmitter {
 
 		let texture = this.spritesheet.textures[tile.image];
 
-		tile.lazyLoad = false;
+		tile.lazyLoad = !(texture != undefined && texture.valid);
 
 		const absUrl = this._relativeToAbsolutePath(this.baseUrl, tile.image);
-
 		//Texture not found by relative path
 		if (!texture) {
 			//Try to find by absolute path
@@ -795,7 +794,6 @@ class TilesetManager extends EventEmitter {
 		}
 
 		tile.texture = texture;
-
 		return tile;
 	}
 
@@ -841,9 +839,9 @@ class TilesetManager extends EventEmitter {
 		const yId = tile.id / colls | 0;
 
 		texture = new Texture(texture.baseTexture, new Rectangle(
-			margin + xId * (set.tilewidth + space),
-			margin + yId * (set.tileheight + space),
-			set.tileheight, set.tilewidth
+			texture._frame.x + margin + xId * (set.tilewidth + space),
+			texture._frame.y + margin + yId * (set.tileheight + space),
+			set.tilewidth, set.tileheight
 		));
 
 		this._sheet.addTexture(texture, `${tile.image}_${tile.tilesetId}:${tile.id}`);
@@ -899,10 +897,11 @@ class TiledMapContainer extends TiledContainer {
 
 let showHello = true;
 
+let TilesetCache = {};
+
 function CreateStage(
 	sheet,
 	_data,
-	baseUrl = '',
 ) {
 
 	if (showHello) {
@@ -916,7 +915,7 @@ function CreateStage(
 	stage.source = _data;
 
 	stage.tileSet = new TilesetManager(_data.tilesets, sheet);
-	stage.tileSet.baseUrl = baseUrl;
+	stage.tileSet.baseUrl = _data.baseUrl;
 
 	if (_data.layers) {
 		let zOrder = 0; //_data.layers.length;
@@ -943,91 +942,99 @@ function CreateStage(
 			stage.addChild(pixiLayer);
 		}
 	}
-
 	return stage;
 }
+const cropName = new RegExp(/^.*[\\\/]/);
 
-const Parser = {
-	Parse(res, next) {
-		const data = res.data;
-		//validate
-		if (!data || data.type != 'map') {
-			next();
-			return;
-		}
-
-		const cropName = new RegExp(/^.*[\\\/]/);
-		let baseUrl = res.url.replace((this ).baseUrl, '');
-		baseUrl = baseUrl.match(cropName)[0];
-
-		const tilesetsToLoad = [];
-		for (let  tilesetIndex = 0; tilesetIndex < data.tilesets.length; tilesetIndex++)
+const TiledMapAsset = {
+	extension: ExtensionType.Asset,
+	detection: {
+		test: async() =>  { return true;},
+		add: async (formats) => { return [...formats, "json"]; },
+		remove: async (formats) => { return formats.filter((ext) => ext == "json")}
+	},
+	loader: {
+		extension: {
+			type: ExtensionType.LoadParser,
+			priority: LoaderParserPriority.Low
+		},
+		testParse(asset, loadAsset, loader)
 		{
-			const tileset = data.tilesets[tilesetIndex];
-			if (tileset.source !== undefined)
-			{
-				tilesetsToLoad.push(tileset);
-			}
-		}
-
-		const _tryCreateStage = function()
+			return new Promise((resolve, reject) => {
+				if (asset && asset.type == 'map')
+				{
+					resolve(true);
+				}
+				else
+				{
+					resolve(false);
+				}
+			});
+		},
+		parse(map, loadedAsset, loader)
 		{
-			const stage = CreateStage(res.textures, data, baseUrl);
+			return new Promise((resolve, reject) => {	
+				let baseUrl = loadedAsset.src.replace((this ).baseUrl, '');
+				baseUrl = baseUrl.match(cropName)[0];
+				map.baseUrl = baseUrl;
 
-			if (!stage) {
-				next();
-				return;
-			}
-
-			stage.name = res.url.replace(cropName, '').split('.')[0];
-			//@ts-ignore
-			res.stage = stage;
-
-			if (stage.tileSet.loaded) {
-				next();
-				return;
-			}
-
-			stage.tileSet.once('loaded', () => next());
-		};
-
-		if (tilesetsToLoad.length > 0)
-		{
-			const loader = new Loader();
-			for (let tilesetIndex = 0; tilesetIndex < tilesetsToLoad.length; tilesetIndex++)
-			{
-				loader.add(baseUrl + tilesetsToLoad[tilesetIndex].source);
-			}
-			loader.load(()=>{
-				Object.keys(loader.resources).forEach(resourcePath => {
-					let tilesetResource = loader.resources[resourcePath];
-					let resourceFileName =  resourcePath.replace(cropName, '');
-					for (let  tilesetIndex = 0; tilesetIndex < data.tilesets.length; tilesetIndex++)
+				const tilesetsToLoad = [];
+				for (let  tilesetIndex = 0; tilesetIndex < map.tilesets.length; tilesetIndex++)
+				{
+					const tileset = map.tilesets[tilesetIndex];
+					if (tileset.source !== undefined)
 					{
-						const tileset = data.tilesets[tilesetIndex];
-						if (tileset.source === resourceFileName)
+						let cachedTileset = TilesetCache[tileset.source];
+						if (cachedTileset)
 						{
-							Object.assign(tileset, tilesetResource.data);
+							map.tilesets[tilesetIndex] = cachedTileset;
+						}
+						else 
+						{
+							tilesetsToLoad.push(tileset);
+							TilesetCache[tileset.source] = tileset;
 						}
 					}
-				});
-				_tryCreateStage();
+				}			
+				if (tilesetsToLoad.length == 0)
+				{
+					resolve(map );
+				}
+				else
+				{
+					let  tilesetsList = [];
+					for (let tilesetIndex = 0; tilesetIndex < tilesetsToLoad.length; tilesetIndex++)
+					{
+						let tileset = tilesetsToLoad[tilesetIndex];
+						if (tileset.source !== undefined)
+						{
+							let name = utils.path.basename(tileset.source);
+							tilesetsList.push(name);
+							Assets.add(name, baseUrl + tilesetsToLoad[tilesetIndex].source);
+						}
+					}
+					Assets.load(tilesetsList).then((resources)=>{
+						Object.keys(resources).forEach(resourcePath => {
+							let tilesetResource = resources[resourcePath];
+							let resourceFileName =  resourcePath.replace(cropName, '');
+							for (let  tilesetIndex = 0; tilesetIndex < map.tilesets.length; tilesetIndex++)
+							{
+								const tileset = map.tilesets[tilesetIndex];
+								if (tileset.source === resourceFileName)
+								{
+									Object.assign(tileset, tilesetResource);
+								}
+							} 
+						});
+						resolve(map );
+					});
+				}
 			});
-		}
-		else
-		{
-			_tryCreateStage();
-		}
-	},
+		},
+	} 
+} ;
 
-	use(res, next) {
-		Parser.Parse.call(this, res, next);
-	},
-
-	add() {
-		console.log('[TILED] middleware registered!');
-	},
-};
+extensions.add(TiledMapAsset);
 
 function container (container) {
 
@@ -1269,15 +1276,14 @@ const ObjectLayerBuilder = {
 
 				gid: -1,
 				name: imageLayer.name,
-				x: imageLayer.x + imageLayer.offsetx,
-				y: imageLayer.y + imageLayer.offsety,
+				x: imageLayer.x,
+				y: imageLayer.y,
 
 				fromImageLayer: true,
 				properties: imageLayer.properties,
 				parsedProps: imageLayer.parsedProps,
 			} ,
 		];
-
 		return true;
 	},
 };
@@ -1296,6 +1302,34 @@ const TiledLayerBuilder = {
 		const { width, height } = layer;
 		const { tileheight, tilewidth } = tileMapSource;
 
+		var xWeights = {
+			x: 0,
+			y: 0
+		};
+		var yWeights = {
+			x: 0,
+			y: 0
+		};
+		var mapOrientationShift = {
+			x: 0,
+			y: 0
+		};
+		switch (tileMapSource.orientation)
+		{
+			case "orthogonal":
+				xWeights.x = tilewidth;
+				yWeights.y = tileheight;
+				break;
+			case "isometric":
+				xWeights.x = tilewidth / 2;
+				xWeights.y = -tilewidth / 2;
+				yWeights.x = tileheight / 2;
+				yWeights.y = tileheight / 2;
+				mapOrientationShift.x = (height - 1) * xWeights.x;
+				mapOrientationShift.y = -tileheight/2;
+				break;
+		}
+
 		const genTile = (x, y, gid)=>{
 			const tile = set.getTileByGid(gid);
 
@@ -1306,8 +1340,8 @@ const TiledLayerBuilder = {
 				anchor: {x: 0, y: 0}
 			} );
 			
-			s.x = x * tilewidth;
-			s.y = y * tileheight - (tile.imageheight === undefined ? 0 : tile.imageheight - tileheight);
+			s.x = x * xWeights.x + y * xWeights.y + mapOrientationShift.x;
+			s.y = x * yWeights.x + y * yWeights.y + mapOrientationShift.y - (tile.imageheight === undefined ? 0 : tile.imageheight - tileheight);
 			s.roundPixels = Config.roundPixels;
 
 			if(tile && tile.animation) {
@@ -1351,6 +1385,7 @@ const TiledLayerBuilder = {
 
 const VERSION = '2.0.0';
 
+
 // prevent circular
 Object.assign(LayerBuildersMap, {
 	tilelayer: TiledLayerBuilder,
@@ -1372,11 +1407,7 @@ function Inject(pixiPack = window.PIXI, props = undefined) {
 	}
 
 	InjectMixins(pixiPack);
-
-	if (Config.injectMiddleware) {
-		pixiPack.Loader.registerPlugin(Parser);
-	}
 }
 
-export { Config, ContainerBuilder, CreateStage, Inject, MultiSpritesheet, Parser, TiledPrimitives as Primitives, SpriteBuilder, TextBuilder, TiledContainer, VERSION };
+export { Config, ContainerBuilder, CreateStage, Inject, LayerBuildersMap, MultiSpritesheet, ObjectLayerBuilder, TiledPrimitives as Primitives, SpriteBuilder, TextBuilder, TiledContainer, TiledMapAsset, VERSION };
 //# sourceMappingURL=pixi-tiled.esm.js.map

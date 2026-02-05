@@ -1,7 +1,7 @@
 {
-  "name": "pixiv5-tiled",
+  "name": "@fablevision/pixi-tiled",
   "iife:name": "TiledOG",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
   "description": "pixi-tiled",
   "namespace": "PIXI.tiled",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eXponenta/pixi-tiled.git"
+    "url": "git+https://github.com/FableVision/pixi-tiled.git"
   },
   "keywords": [
     "pixi",
@@ -27,9 +27,9 @@
   "author": "eXponenta <rondo.devil@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/eXponenta/pixi-tiled/issues"
+    "url": "https://github.com/FableVision/pixi-tiled/issues"
   },
-  "homepage": "https://github.com/eXponenta/pixi-tiled#readme",
+  "homepage": "https://github.com/FableVision/pixi-tiled#readme",
   "devDependencies": {
     "@microsoft/api-extractor": "^7.18.4",
     "@pixi/assets": "^7.2.4",
